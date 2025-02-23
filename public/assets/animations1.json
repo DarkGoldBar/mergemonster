@@ -1,0 +1,126 @@
+{
+  "anims": [
+    {
+      "key": "star1",
+      "type": "frame",
+      "frames": [
+        {
+          "key": "pipo-etcchara002",
+          "frame": 0,
+          "duration": 0,
+          "keyframe": false
+        },
+        {
+          "key": "pipo-etcchara002",
+          "frame": 1,
+          "duration": 0,
+          "keyframe": false
+        },
+        {
+          "key": "pipo-etcchara002",
+          "frame": 2,
+          "duration": 0,
+          "keyframe": false
+        }
+      ],
+      "frameRate": 5,
+      "skipMissedFrames": true,
+      "repeat": -1,
+      "yoyo": true
+    },
+    {
+      "key": "circle1",
+      "type": "frame",
+      "frames": [
+        {
+          "key": "pipo-etcchara002",
+          "frame": 3,
+          "duration": 0,
+          "keyframe": false
+        },
+        {
+          "key": "pipo-etcchara002",
+          "frame": 4,
+          "duration": 0,
+          "keyframe": false
+        },
+        {
+          "key": "pipo-etcchara002",
+          "frame": 5,
+          "duration": 0,
+          "keyframe": false
+        }
+      ],
+      "frameRate": 5,
+      "skipMissedFrames": true,
+      "repeat": -1,
+      "yoyo": true
+    },
+    {
+      "key": "crystal1",
+      "type": "frame",
+      "frames": [
+        {
+          "key": "pipo-etcchara002",
+          "frame": 6,
+          "duration": 0,
+          "keyframe": false
+        },
+        {
+          "key": "pipo-etcchara002",
+          "frame": 7,
+          "duration": 0,
+          "keyframe": false
+        },
+        {
+          "key": "pipo-etcchara002",
+          "frame": 8,
+          "duration": 0,
+          "keyframe": false
+        }
+      ],
+      "frameRate": 5,
+      "skipMissedFrames": true,
+      "repeat": -1,
+      "yoyo": true
+    },
+    {
+      "key": "orb1",
+      "type": "frame",
+      "frames": [
+        {
+          "key": "pipo-etcchara002",
+          "frame": 9,
+          "duration": 0,
+          "keyframe": false
+        },
+        {
+          "key": "pipo-etcchara002",
+          "frame": 10,
+          "duration": 0,
+          "keyframe": false
+        },
+        {
+          "key": "pipo-etcchara002",
+          "frame": 11,
+          "duration": 0,
+          "keyframe": false
+        }
+      ],
+      "frameRate": 5,
+      "skipMissedFrames": true,
+      "repeat": -1,
+      "yoyo": true
+    }
+  ],
+  "globalTimeScale": 1,
+  "meta": {
+    "app": "Phaser Editor 2D v3",
+    "contentType": "Phaser v3 Animations"
+  },
+  "settings": {
+    "sourceLang": "TYPE_SCRIPT",
+    "esModule": true,
+    "generateCode": true
+  }
+}
