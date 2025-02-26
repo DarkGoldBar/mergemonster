@@ -1,74 +1,56 @@
 import { Scene } from 'phaser';
 import { Block } from '../sprites/block';
 import { Monster } from '../sprites/monster';
+import { findMatches } from '../utils';
 
-class UnionFind {
-    parent;
-    rank;
 
-    constructor(n) {
-        this.parent = Array(n).fill(0).map((_, i) => i);
-        this.rank = Array(n).fill(1);
-    }
-
-    find(x) {
-        if (this.parent[x] !== x) {
-            this.parent[x] = this.find(this.parent[x]); // 路径压缩
-        }
-        return this.parent[x];
-    }
-
-    union(x, y) {
-        const rootX = this.find(x);
-        const rootY = this.find(y);
-        if (rootX === rootY) return;
-
-        // 按秩合并
-        if (this.rank[rootX] < this.rank[rootY]) {
-            this.parent[rootX] = rootY;
-        } else {
-            this.parent[rootY] = rootX;
-            if (this.rank[rootX] === this.rank[rootY]) {
-                this.rank[rootX]++;
-            }
-        }
-    }
-}
+const marginTop = 150;
+const marginLeft = 50;
+const marginGap = 10;
 
 export class MainGame extends Scene {
-    constructor() {
-        super('MainGame');
-        /**
-         * @type {string[][]}
-         */
-        this.board = null;
-        /**
-         * @type {number}
-         */
-        this.boardrows = 0;
-        /**
-         * @type {number}
-         */
-        this.boardcols = 0;
-        /**
-         * @type {Block[][]}
-         */
-        this.blocks = null;
-        /**
-         * @type {Monster[][]}
-         */
-        this.monsters = null;
-    }
+    /** @type {number} */
+    boardrows = 0;
+    /** @type {number} */
+    boardcols = 0;
+    /** @type {number} */
+    _score = 0;
+    /** @type {number} */
+    _steps = 1;
+    /** @type {string[][]} */
+    board;
+    /** @type {Block[][]} */
+    blocks;
+    /** @type {Monster[][]} */
+    monsters;
+
+    alignConfig = {
+        width: 1,
+        height: 1,
+        cellWidth: 10,
+        cellHeight: 10,
+        x: marginLeft,
+        y: marginTop,
+        position: Phaser.Display.Align.CENTER
+    };
 
     example_data = {
         board: 'XXXXX|XXXXX|XX XX|XXXXX|XXXXX',
-        monsters: ['star', 'crystal', 'orb']
+        monsters: ['star', 'crystal', 'orb'],
+        steps: 20;
     };
 
-    createBoard(data = this.example_data) {
+    constructor() {
+        super('MainGame');
+    }
+
+    createBoard(data) {
+        data = data ?? this.example_data;
         this.board = data.board.split('|');
         this.boardrows = this.board.length;
         this.boardcols = this.board[0].length;
+        this._steps = data.steps;
+        this._score = 0;
         this.blocks = [];
         this.monsters = [];
         for (let i = 0; i < this.boardrows; i++) {
@@ -79,9 +61,8 @@ export class MainGame extends Scene {
                     this.blocks[i][j] = new Block(this, 0, 0, '');
                     this.monsters[i][j] = new Monster(this, 0, 0, '');
                 } else {
-                    const anim = data.monsters[Math.floor(Math.random() * data.monsters.length)]
                     this.blocks[i][j] = new Block(this, 0, 0, 'X');
-                    this.monsters[i][j] = new Monster(this, 0, 0, anim);
+                    this.monsters[i][j] = new Monster(this, 0, 0, data.monsters);
                 }
             }
         }
@@ -90,73 +71,50 @@ export class MainGame extends Scene {
         this.g_blocks.setDepth(0);
         this.g_monsters.setDepth(1);
 
-        const alignConfig = {
-            width: this.boardcols,
-            height: this.boardrows,
-            cellWidth: 56,
-            cellHeight: 56,
-            x: 50,
-            y: 150,
-            position: Phaser.Display.Align.CENTER
-        };
+        this.alignConfig.width = this.boardcols;
+        this.alignConfig.height = this.boardrows,
+        this.alignConfig.cellWidth = (this.scale.width - 2 * marginLeft) / this.boardcols;
+        this.alignConfig.cellHeight = this.alignConfig.cellWidth;
+
         Phaser.Actions.GridAlign(this.g_blocks.getChildren(), alignConfig);
         Phaser.Actions.GridAlign(this.g_monsters.getChildren(), alignConfig);
     }
 
-    setupMonsterDrag() {
-        // 遍历所有怪物
-        this.monsters.flat().forEach(monster => {
-            if (!monster.mark) return;
+    setupMonsterDrag(monster) {
+        if (!monster.mark) return;
+        monster.setInteractive();
+        this.input.setDraggable(monster);
 
-            // 启用交互
-            monster.setInteractive();
+        monster.on('dragstart', () => {
+            monster.dragStartX = monster.x;
+            monster.dragStartY = monster.y;
+            monster.setAlpha(0.8);
+            this.children.bringToTop(monster);
+        });
 
-            // 拖动逻辑
-            this.input.setDraggable(monster);
+        monster.on('drag', (pointer, dragX, dragY) => {
+            monster.x = dragX;
+            monster.y = dragY;
+        });
 
-            // 拖动开始
-            monster.on('dragstart', () => {
-                monster.dragStartX = monster.x; // 记录初始位置
-                monster.dragStartY = monster.y;
-                monster.setAlpha(0.8); // 半透明
-                this.children.bringToTop(monster); // 置顶显示
-            });
-
-            // 拖动中
-            monster.on('drag', (pointer, dragX, dragY) => {
-                monster.x = dragX;
-                monster.y = dragY;
-            });
-
-            // 拖动结束
-            monster.on('dragend', () => {
-                monster.setAlpha(1); // 恢复不透明
-
-                // 获取当前拖动的行列
-                const startGrid = this.getGridPosition(monster.dragStartX, monster.dragStartY);
-                const endGrid = this.getGridPosition(monster.x, monster.y);
-
-                // 检查是否有效交换
-                if (startGrid && endGrid) {
-                    this.monsters.flat().forEach(m => m.removeInteractive());
-                    this.swapMonsters(startGrid, endGrid);
-                    const match = this.findMatches();
-                    if (match) {
-                        this.removeMatches(match, [endGrid, startGrid])
-                            .then(() => this.fallDownMonsters()
-                                .then(() => this.setupMonsterDrag()));
-                    };
-                } else {
-                    // 回到原位
-                    monster.x = monster.dragStartX;
-                    monster.y = monster.dragStartY;
-                }
-            });
+        monster.on('dragend', () => {
+            monster.setAlpha(1);
+            const startGrid = this.getGridPosition(monster.dragStartX, monster.dragStartY);
+            const endGrid = this.getGridPosition(monster.x, monster.y);
+            if (startGrid && endGrid) {
+                this.monsters.flat().forEach(m => m.disableInteractive());
+                this.steps--;
+                this.swapMonsters(startGrid, endGrid);
+                this.events.emit("match");
+            } else {
+                monster.x = monster.dragStartX;
+                monster.y = monster.dragStartY;
+            }
         });
     }
 
     getGridPosition(x, y) {
-        const alignConfig = { x: 50, y: 150, cellWidth: 56, cellHeight: 56 };
+        const alignConfig = this.alignConfig;
 
         // 计算行列
         const col = Math.round((x - alignConfig.x - alignConfig.cellWidth / 2) / alignConfig.cellWidth);
@@ -200,82 +158,6 @@ export class MainGame extends Scene {
         this.monsters[endPos.row][endPos.col]] =
             [this.monsters[endPos.row][endPos.col],
             this.monsters[startPos.row][startPos.col]];
-    }
-
-    findMatches() {
-        const rows = this.boardrows;
-        const cols = this.boardcols;
-        const directions = [
-            { dr: 0, dc: 1 },  // 右
-            { dr: 1, dc: 1 },  // 右下
-            { dr: 1, dc: 0 },  // 下
-            { dr: 1, dc: -1 }, // 左下
-            { dr: 0, dc: -1 }, // 左
-            { dr: -1, dc: -1 },// 左上
-            { dr: -1, dc: 0 }, // 上
-            { dr: -1, dc: 1 }  // 右上
-        ];
-
-        // 初始化并查集
-        const totalNodes = rows * cols;
-        const uf = new UnionFind(totalNodes);
-
-        // 第一步：检查8个方向，标记三连相同为联通
-        for (let row = 0; row < rows; row++) {
-            for (let col = 0; col < cols; col++) {
-                const current = this.monsters[row][col];
-                if (!current || current.mark === '') continue;
-
-                const currentIdx = row * cols + col;
-
-                // 检查8个方向
-                for (const dir of directions) {
-                    const prevRow = row - dir.dr;
-                    const prevCol = col - dir.dc;
-                    const nextRow = row + dir.dr;
-                    const nextCol = col + dir.dc;
-
-                    // 检查相反两个方向的棋子是否相同
-                    if (
-                        prevRow >= 0 && prevRow < rows &&
-                        prevCol >= 0 && prevCol < cols &&
-                        nextRow >= 0 && nextRow < rows &&
-                        nextCol >= 0 && nextCol < cols
-                    ) {
-                        const prevMonster = this.monsters[prevRow][prevCol];
-                        const nextMonster = this.monsters[nextRow][nextCol];
-
-                        if (prevMonster?.equals(current) && nextMonster?.equals(current)) {
-                            // 标记三个棋子为联通
-                            const prevIdx = prevRow * cols + prevCol;
-                            const nextIdx = nextRow * cols + nextCol;
-                            uf.union(currentIdx, prevIdx);
-                            uf.union(currentIdx, nextIdx);
-                        }
-                    }
-                }
-            }
-        }
-
-        // 第二步：收集所有联通区域
-        const groups = new Map();
-        for (let row = 0; row < rows; row++) {
-            for (let col = 0; col < cols; col++) {
-                const current = this.monsters[row][col];
-                if (!current || current.mark === '') continue;
-
-                const idx = row * cols + col;
-                const root = uf.find(idx);
-
-                if (!groups.has(root)) {
-                    groups.set(root, []);
-                }
-                groups.get(root).push({ row, col });
-            }
-        }
-
-        // 返回所有联通区域
-        return Array.from(groups.values()).filter(group => group.length >= 3);
     }
 
     /**
@@ -334,7 +216,10 @@ export class MainGame extends Scene {
                     duration: 500,
                     ease: 'Power2',
                     onComplete: () => {
-                        toDestory.forEach(monster => monster.destroy());
+                        toDestory.forEach(monster => {
+                            this.addScore(monster.getScore());
+                            monster.destroy();
+                        });
                         centerMonster.levelUp();
                         centerMonster.setPosition(centerBlock.x, centerBlock.y);
                         resolve();
@@ -432,14 +317,43 @@ export class MainGame extends Scene {
         })));
     }
 
+    set score(num) {
+        this._score = num;
+    }
+
+    get score() {
+        return this._score;
+    }
+
+    set steps(num) {
+        this._steps = num;
+    }
+
+    get steps() {
+        return this._steps;
+    }
+
+    onMatch(combo=0) {
+        const match = findMatches(this.monsters, this.boardcols, this.boardrows);
+        if (match) {
+            this.removeMatches(match, [endGrid, startGrid])
+            .then(this.fallDownMonsters)
+            .then(this.setupMonsterDrag)
+            .then(() => {
+                this.events.emit("match", combo + 1);
+            });
+    }
+
     create() {
         console.log(this);
 
         this.cameras.main.setBackgroundColor(0x00ff00);
-
         this.add.image(200, 400, 'background').setAlpha(0.5);
 
         this.createBoard();
-        this.setupMonsterDrag();
+
+        this.events.on("match", this.onMatch, this);
+
+        this.monsters.flat().forEach(m => this.setupMonsterDrag(m));
     }
 }

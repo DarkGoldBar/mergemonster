@@ -1,19 +1,13 @@
 import Phaser from "phaser";
 
+const ScoreMap = [1, 5, 25, 150];
+
 export class Monster extends Phaser.GameObjects.Sprite {
-    /**
-     * @type {string}
-     */
+    /** @type {string} */
     mark = '';
-
-    /**
-     * @type {number}
-     */
+    /** @type {number} */
     level = 1;
-
-    /**
-     * @type {boolean}
-     */
+    /** @type {boolean} */
     isFalling = false;
     /**
      * @param {Phaser.Scene} scene The scene this sprite belongs to.
@@ -29,8 +23,8 @@ export class Monster extends Phaser.GameObjects.Sprite {
             mark = mark[Math.floor(Math.random() * mark.length)];
         }
         if (mark) {
-            this.play(`${mark}${this.level}`);
             this.mark = mark;
+            this.setLevel(1);
         }
     }
 
@@ -49,5 +43,9 @@ export class Monster extends Phaser.GameObjects.Sprite {
 
     canFall() {
         return !this.isFalling && this.mark;
+    }
+
+    getScore() {
+        return ScoreMap[(this.level - 1) % 4] * Math.pow(1000, Math.floor((this.level - 1) / 4));
     }
 }
